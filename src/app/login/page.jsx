@@ -1,17 +1,38 @@
 "use client";
 import { useState } from "react";
+import axios from "axios";
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({ identifier: "", password: "" }); // identifier = email or userCode
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Login Data:", formData);
-    alert("Login Successful!");
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const res = await axios.post("/api/auth?action=login", {
+        email: formData.identifier.includes("@") ? formData.identifier : "",
+        userCode: !formData.identifier.includes("@") ? formData.identifier : "",
+        password: formData.password,
+      });
+
+      setMessage(`✅ ${res.data.message}`);
+      // Optionally, store token: localStorage.setItem("token", res.data.token);
+      setFormData({ identifier: "", password: "" });
+    } catch (err) {
+      setMessage(
+        "❌ " + (err.response?.data?.error || "Server error. Try again later.")
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -22,18 +43,31 @@ export default function LoginPage() {
           Login to Your Account
         </h1>
 
+        {/* Message */}
+        {message && (
+          <p
+            className={`text-center mb-4 ${
+              message.includes("✅") ? "text-green-600" : "text-red-500"
+            }`}
+          >
+            {message}
+          </p>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email */}
+          {/* Identifier (Email or UserCode) */}
           <div>
-            <label className="block text-gray-700 mb-1">Email Address</label>
+            <label className="block text-gray-700 mb-1">
+              Email or User Code
+            </label>
             <input
-              type="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              name="identifier"
+              value={formData.identifier}
               onChange={handleChange}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="example@mail.com"
+              placeholder="example@mail.com or 123456"
               required
             />
           </div>
@@ -54,7 +88,10 @@ export default function LoginPage() {
 
           {/* Forgot Password */}
           <div className="text-right">
-            <a href="/forgot-password" className="text-sm text-blue-500 hover:underline">
+            <a
+              href="/forgot-password"
+              className="text-sm text-blue-500 hover:underline"
+            >
               Forgot Password?
             </a>
           </div>
@@ -62,9 +99,10 @@ export default function LoginPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition duration-200"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition duration-200 flex items-center justify-center gap-2"
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
