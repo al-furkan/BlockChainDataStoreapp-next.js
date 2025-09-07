@@ -1,118 +1,204 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
+import axios from "axios";
+import {
+  User,
+  Mail,
+  Phone,
+  Lock,
+  Image as ImageIcon,
+  MapPin,
+  Calendar,
+  Globe,
+  Fingerprint,
+  Languages,
+  Loader2,
+} from "lucide-react";
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    reference: "",
-  });
+  const [form, setForm] = useState({});
+  const [image, setImage] = useState(null);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Generate random 6-digit numeric code
+  const generateRandomCode = (length = 6) => {
+    let code = "";
+    const characters = "0123456789";
+    for (let i = 0; i < length; i++) {
+      code += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return code;
+  };
+
+  // Generate unique user code on page load
+  useEffect(() => {
+    const userCode = generateRandomCode();
+    setForm((prev) => ({ ...prev, Usercode: userCode }));
+  }, []);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Register Data:", formData);
-    alert("Registration Successful!");
+  const handleFile = (e) => {
+    setImage(e.target.files[0]);
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const formData = new FormData();
+      Object.keys(form).forEach((key) => {
+        formData.append(key, form[key]);
+      });
+
+      if (image) formData.append("image", image);
+
+      // Optional: Face API check
+      if (image) {
+        try {
+          const faceRes = await axios.post("/api/face-detect", formData);
+          if (!faceRes.data.success) {
+            setMessage("❌ No valid face detected. Please upload a clear photo.");
+            setLoading(false);
+            return;
+          }
+        } catch (faceErr) {
+          console.warn("Face API failed:", faceErr.message);
+        }
+      }
+
+      const res = await axios.post("/api/auth/register", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (res.data?.error) setMessage("❌ " + res.data.error);
+      else
+        setMessage(
+          `✅ Registration successful! Your User Code: ${form.Usercode}`
+        );
+    } catch (err) {
+      setMessage(
+        "❌ " + (err.response?.data?.error || "Server error. Try again later.")
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const InputField = ({ icon: Icon, ...props }) => (
+    <div className="relative">
+      <Icon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+      <input
+        {...props}
+        onChange={handleChange}
+        className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+  );
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          Create Your Account
-        </h1>
+    <div className="max-w-3xl mx-auto p-6 bg-white shadow-lg rounded-2xl mt-6">
+      <h1 className="text-3xl font-bold mb-4 text-center text-blue-700">
+        Register
+      </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Full Name */}
-          <div>
-            <label className="block text-gray-700 mb-1">Full Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="John Doe"
-              required
-            />
-          </div>
-
-          {/* Email */}
-          <div>
-            <label className="block text-gray-700 mb-1">Email Address</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="example@mail.com"
-              required
-            />
-          </div>
-
-          {/* Reference Number */}
-          <div>
-            <label className="block text-gray-700 mb-1">Reference Number</label>
-            <input
-              type="text"
-              name="reference"
-              value={formData.reference}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Enter your referral/reference code"
-            />
-          </div>
-
-          {/* Password */}
-          <div>
-            <label className="block text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          {/* Confirm Password */}
-          <div>
-            <label className="block text-gray-700 mb-1">Confirm Password</label>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition duration-200"
-          >
-            Register
-          </button>
-        </form>
-
-        <p className="text-center text-gray-600 mt-4 text-sm">
-          Already have an account?{" "}
-          <a href="/login" className="text-blue-500 hover:underline">
-            Login here
-          </a>
+      {message && (
+        <p
+          className={`text-center font-medium mb-4 ${
+            message.includes("✅") ? "text-green-600" : "text-red-500"
+          }`}
+        >
+          {message}
         </p>
-      </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Auto-generated User Code */}
+        <InputField
+          name="Usercode"
+          placeholder="Your Unique Code"
+          icon={Fingerprint}
+          value={form.Usercode || ""}
+        />
+
+        <InputField name="sponsorCode" placeholder="Sponsor Code" icon={Fingerprint} required />
+        <InputField name="sponsorName" placeholder="Sponsor Name" icon={User} required />
+        <InputField name="fullName" placeholder="Full Name" icon={User} required />
+
+        {/* Gender */}
+        <div className="relative">
+          <select
+            name="gender"
+            onChange={handleChange}
+            required
+            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select Gender</option>
+            <option>Male</option>
+            <option>Female</option>
+            <option>Other</option>
+          </select>
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        </div>
+
+        <InputField type="date" name="dob" icon={Calendar} required />
+        <InputField name="nationality" placeholder="Nationality" icon={Globe} required />
+        <InputField name="mobile" placeholder="Mobile No" icon={Phone} required />
+        <InputField type="email" name="email" placeholder="Email" icon={Mail} required />
+
+        {/* Preferred Language */}
+        <div className="relative">
+          <select
+            name="preferredLanguage"
+            onChange={handleChange}
+            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
+          >
+            <option>English</option>
+            <option>Bangla</option>
+            <option>Hindi</option>
+          </select>
+          <Languages className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        </div>
+
+        <InputField name="address" placeholder="Address" icon={MapPin} required />
+        <InputField name="state" placeholder="State/Province" icon={MapPin} required />
+        <InputField name="city" placeholder="City/Town" icon={MapPin} required />
+        <InputField type="password" name="password" placeholder="Password" icon={Lock} required />
+
+        {/* Image Upload */}
+        <div className="col-span-2 relative border-dashed border-2 rounded-lg p-4 flex flex-col items-center cursor-pointer hover:border-blue-500">
+          <ImageIcon className="text-gray-400 mb-2" size={28} />
+          <input
+            type="file"
+            name="image"
+            accept="image/*"
+            onChange={handleFile}
+            className="absolute inset-0 opacity-0 cursor-pointer"
+          />
+          <p className="text-gray-500">Upload Profile Image</p>
+          {image && <p className="text-sm mt-1 text-green-600">{image.name}</p>}
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="col-span-2 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin" size={18} /> Registering...
+            </>
+          ) : (
+            "Register"
+          )}
+        </button>
+      </form>
     </div>
   );
 }
