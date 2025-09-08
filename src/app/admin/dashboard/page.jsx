@@ -1,72 +1,142 @@
 "use client";
+
 import { useEffect, useState } from "react";
+import axios from "axios";
+import Cookie from "js-cookie";
+import { Loader2, Check, X, Trash2 } from "lucide-react";
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const token = Cookie.get("token");
 
-  const fetchUsers = () => {
-    fetch("/api/admin/users")
-      .then((res) => res.json())
-      .then((data) => setUsers(data.users));
-  };
-
+  // fetch all users
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    const fetchUsers = async () => {
+      try {
+        const res = await axios.get("/api/admin/users", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUsers(res.data.users);
+      } catch (err) {
+        console.error("Error fetching users:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (token) fetchUsers();
+  }, [token]);
 
-  const handleApproval = async (id, isApproved) => {
-    await fetch("/api/admin/users", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: id, isApproved }),
-    });
-    fetchUsers();
+  // approve/unapprove user
+  const toggleApproval = async (id, currentStatus) => {
+    try {
+      await axios.patch(
+        "/api/admin/users",
+        { userId: id, isApproved: !currentStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setUsers((prev) =>
+        prev.map((u) =>
+          u._id === id ? { ...u, isApproved: !currentStatus } : u
+        )
+      );
+    } catch (err) {
+      console.error("Error updating approval:", err);
+    }
   };
+
+  // delete user
+  const deleteUser = async (id) => {
+    if (!confirm("Are you sure you want to delete this user?")) return;
+    try {
+      await axios.delete("/api/admin/users", {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { userId: id },
+      });
+      setUsers((prev) => prev.filter((u) => u._id !== id));
+    } catch (err) {
+      console.error("Error deleting user:", err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2 className="animate-spin text-primary w-8 h-8" />
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-5xl mx-auto mt-10 bg-gray-50 p-6 shadow-lg rounded-2xl">
-      <h1 className="text-2xl font-bold mb-6 text-blue-700">Admin Dashboard</h1>
-      <table className="w-full border-collapse border border-gray-300">
-        <thead>
-          <tr className="bg-blue-600 text-white">
-            <th className="p-2 border">Name</th>
-            <th className="p-2 border">Email</th>
-            <th className="p-2 border">Balance</th>
-            <th className="p-2 border">Status</th>
-            <th className="p-2 border">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u._id} className="text-center hover:bg-gray-100">
-              <td className="p-2 border">{u.fullName}</td>
-              <td className="p-2 border">{u.email}</td>
-              <td className="p-2 border text-green-600 font-semibold">৳{u.balance}</td>
-              <td className="p-2 border">
-                {u.isApproved ? (
-                  <span className="text-green-600 font-bold">Approved</span>
-                ) : (
-                  <span className="text-red-500 font-bold">Pending</span>
-                )}
-              </td>
-              <td className="p-2 border">
-                <button
-                  onClick={() => handleApproval(u._id, true)}
-                  className="bg-green-500 text-white px-3 py-1 rounded mr-2"
-                >
-                  Approve
-                </button>
-                <button
-                  onClick={() => handleApproval(u._id, false)}
-                  className="bg-red-500 text-white px-3 py-1 rounded"
-                >
-                  Reject
-                </button>
-              </td>
+    <div className="p-6 min-h-screen bg-soft">
+      <h1 className="text-2xl font-bold text-primary mb-6">
+        Admin Dashboard
+      </h1>
+
+      <div className="overflow-x-auto bg-white shadow rounded-2xl">
+        <table className="min-w-full border-collapse">
+          <thead className="bg-primary text-white">
+            <tr>
+              <th className="px-4 py-2 text-left">Name</th>
+              <th className="px-4 py-2 text-left">Email</th>
+              <th className="px-4 py-2 text-left">Balance</th>
+              <th className="px-4 py-2 text-left">Status</th>
+              <th className="px-4 py-2 text-left">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {users.map((user) => (
+              <tr
+                key={user._id}
+                className="border-b hover:bg-gray-50 transition"
+              >
+                <td className="px-4 py-2">{user.fullName}</td>
+                <td className="px-4 py-2">{user.email}</td>
+                <td className="px-4 py-2">{user.balance} Tk</td>
+                <td className="px-4 py-2">
+                  {user.isApproved ? (
+                    <span className="text-green-600 font-medium">Approved</span>
+                  ) : (
+                    <span className="text-red-600 font-medium">Pending</span>
+                  )}
+                </td>
+                <td className="px-4 py-2 flex gap-2">
+                  <button
+                    onClick={() =>
+                      toggleApproval(user._id, user.isApproved)
+                    }
+                    className={`p-2 rounded-lg text-white ${
+                      user.isApproved ? "bg-red-500" : "bg-green-500"
+                    }`}
+                  >
+                    {user.isApproved ? (
+                      <X className="w-4 h-4" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => deleteUser(user._id)}
+                    className="p-2 rounded-lg bg-gray-700 text-white"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {users.length === 0 && (
+              <tr>
+                <td
+                  colSpan="5"
+                  className="text-center py-4 text-gray-500"
+                >
+                  No users found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
     image: { type: String },
     password: { type: String, required: true },
     balance: { type: Number, default: 0 },
-     role: { type: String, enum: ["admin", "user"], default: "user" }, // ✅ নতুন ফিল্ড
+    role: { type: String, enum: ["admin", "user"], default: "user" }, // ✅ নতুন ফিল্ড
     // New fields
     Usercode: { type: String, required: true, unique: true }, // auto code
     isApproved: { type: Boolean, default: false }, // Admin approval
