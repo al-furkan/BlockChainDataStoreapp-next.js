@@ -1,119 +1,71 @@
 "use client";
 import { useState } from "react";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({ identifier: "", password: "" }); // identifier = email or userCode
+  const [form, setForm] = useState({ email: "", password: "" });
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage("");
-
     try {
-      const res = await axios.post("/api/auth?action=login", {
-        email: formData.identifier.includes("@") ? formData.identifier : "",
-        userCode: !formData.identifier.includes("@") ? formData.identifier : "",
-        password: formData.password,
-      });
+      const res = await axios.post("/api/auth/login", form);
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("role", res.data.role);
 
-      setMessage(`✅ ${res.data.message}`);
-      // Optionally, store token: localStorage.setItem("token", res.data.token);
-      setFormData({ identifier: "", password: "" });
+      setMessage("✅ " + res.data.message);
+
+      if (res.data.role === "admin") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/user/dashboard");
+      }
     } catch (err) {
-      setMessage(
-        "❌ " + (err.response?.data?.error || "Server error. Try again later.")
-      );
-    } finally {
-      setLoading(false);
+      setMessage("❌ " + (err.response?.data?.error || "Login failed"));
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
-        {/* Title */}
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          Login to Your Account
-        </h1>
-
-        {/* Message */}
-        {message && (
-          <p
-            className={`text-center mb-4 ${
-              message.includes("✅") ? "text-green-600" : "text-red-500"
-            }`}
-          >
-            {message}
-          </p>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Identifier (Email or UserCode) */}
-          <div>
-            <label className="block text-gray-700 mb-1">
-              Email or User Code
-            </label>
-            <input
-              type="text"
-              name="identifier"
-              value={formData.identifier}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="example@mail.com or 123456"
-              required
-            />
-          </div>
-
-          {/* Password */}
-          <div>
-            <label className="block text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          {/* Forgot Password */}
-          <div className="text-right">
-            <a
-              href="/forgot-password"
-              className="text-sm text-blue-500 hover:underline"
-            >
-              Forgot Password?
-            </a>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition duration-200 flex items-center justify-center gap-2"
-          >
-            {loading ? "Logging in..." : "Login"}
-          </button>
-        </form>
-
-        {/* Register Link */}
-        <p className="text-center text-gray-600 mt-4 text-sm">
-          Don’t have an account?{" "}
-          <a href="/register" className="text-blue-500 hover:underline">
-            Register here
-          </a>
+    <div className="max-w-md mx-auto mt-10 p-6 bg-white shadow rounded-lg">
+      <h1 className="text-2xl font-bold mb-4 text-center">Login</h1>
+      {message && (
+        <p
+          className={`text-center mb-4 ${
+            message.includes("✅") ? "text-green-600" : "text-red-600"
+          }`}
+        >
+          {message}
         </p>
-      </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          onChange={handleChange}
+          className="w-full border p-2 rounded"
+          required
+        />
+        <input
+          type="password"
+          name="password"
+          placeholder="Password"
+          onChange={handleChange}
+          className="w-full border p-2 rounded"
+          required
+        />
+        <button
+          type="submit"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+        >
+          Login
+        </button>
+      </form>
     </div>
   );
 }
