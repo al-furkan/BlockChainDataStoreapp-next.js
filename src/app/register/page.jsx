@@ -1,365 +1,164 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import axios from "axios";
-import Cookie from "js-cookie";
-import {
-  User,
-  Mail,
-  Phone,
-  Lock,
-  Image as ImageIcon,
-  MapPin,
-  Calendar,
-  Globe,
-  Fingerprint,
-  Languages,
-  Loader2,
-} from "lucide-react";
+import { FaUser, FaEnvelope, FaPhone, FaLock, FaIdCard, FaGlobe, FaMapMarkerAlt, FaCalendarAlt } from "react-icons/fa";
 
-export default function RegisterPage() {
+export default function RegistrationForm() {
   const [form, setForm] = useState({
-    Usercode: "",
-    sponsorCode: "",
-    sponsorName: "",
+    sponsorCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+    refSponsorCode: "",
+    refSponsorName: "",
     fullName: "",
     gender: "",
     dob: "",
+    idNo: "",
     nationality: "",
     mobile: "",
     email: "",
-    preferredLanguage: "English",
+    preferredLanguage: "",
     address: "",
     state: "",
     city: "",
+    postCode: "",
+    image: null,
     password: "",
   });
-  const [image, setImage] = useState(null);
-  const [loading, setLoading] = useState(false);
+
   const [message, setMessage] = useState("");
 
-  // Generate random Usercode
-  const generateUserCode = () => {
-    let code = "";
-    const digits = "0123456789";
-    for (let i = 0; i < 6; i++) {
-      code += digits[Math.floor(Math.random() * digits.length)];
-    }
-    return code;
-  };
-
-  // Auto-generate code & check cookie for auto-login
-  useEffect(() => {
-    setForm((prev) => ({ ...prev, Usercode: generateUserCode() }));
-
-    const token = Cookie.get("token");
-    const storedUser = localStorage.getItem("user");
-    if (token && storedUser) {
-      const user = JSON.parse(storedUser);
-      window.location.href =
-        user.role === "admin" ? "/admin/dashboard" : "/user/dashboard";
-    }
-  }, []);
-
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleFileChange = (e) => {
-    setImage(e.target.files[0]);
+    const { name, value, files } = e.target;
+    if (name === "image") setForm({ ...form, image: files[0] });
+    else setForm({ ...form, [name]: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage("");
 
     try {
       const formData = new FormData();
-      Object.entries(form).forEach(([key, value]) =>
-        formData.append(key, value)
-      );
-      if (image) formData.append("image", image);
-
-      const res = await axios.post("/api/auth/register", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      if (res.data?.error) {
-        setMessage("❌ " + res.data.error);
-      } else {
-        setMessage(
-          `✅ Registration successful! Your User Code: ${form.Usercode}`
-        );
-
-        // Save token & user info
-        if (res.data.token && res.data.user) {
-          Cookie.set("token", res.data.token, { expires: 7 });
-          localStorage.setItem("user", JSON.stringify(res.data.user));
-
-          // Redirect based on role
-          window.location.href =
-            res.data.user.role === "admin"
-              ? "/admin/dashboard"
-              : "/user/dashboard";
-        }
-      }
+      Object.keys(form).forEach((key) => formData.append(key, form[key]));
+      const res = await axios.post("/api/auth/register", formData);
+      setMessage(res.data.message || "Registration successful!");
     } catch (err) {
-      setMessage(
-        "❌ " + (err.response?.data?.error || "Server error. Try again later.")
-      );
-    } finally {
-      setLoading(false);
+      setMessage("Registration failed. Please try again.");
     }
   };
 
+  const inputClass = "w-full border border-gray-300 rounded-lg p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-400 transition";
+
   return (
-    <div className="max-w-3xl mx-auto mt-6 p-6 bg-white shadow-lg rounded-2xl">
-      <h1 className="text-3xl font-bold text-center text-blue-700 mb-4">
-        Register
-      </h1>
+    <div className="max-w-xl mx-auto bg-white shadow-2xl p-8 rounded-3xl mt-10">
+      <h2 className="text-3xl font-bold text-center mb-6 text-blue-700">User Registration</h2>
 
-      {message && (
-        <p
-          className={`text-center font-medium mb-4 ${
-            message.includes("✅") ? "text-green-600" : "text-red-500"
-          }`}
-        >
-          {message}
-        </p>
-      )}
+      {message && <p className="text-center mb-4 text-red-500">{message}</p>}
 
-      <form
-        onSubmit={handleSubmit}
-        className="grid grid-cols-1 md:grid-cols-2 gap-4"
-      >
-        {/* Usercode */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+
+        {/* Auto-generated Sponsor Code */}
         <div className="relative">
-          <Fingerprint className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            name="Usercode"
-            value={form.Usercode}
-            readOnly
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          />
+          <label>Sponsor Code</label>
+          <input type="text" name="sponsorCode" value={form.sponsorCode} readOnly className="w-full border rounded-md p-2 bg-gray-100"/>
         </div>
 
-        {/* Sponsor Code */}
+        {/* Reference Sponsor Code */}
         <div className="relative">
-          <Fingerprint className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="number"
-            name="sponsorCode"
-            placeholder="Sponsor Code"
-            value={form.sponsorCode}
-            onChange={handleChange}
-            required
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          />
+          <FaIdCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input type="text" name="refSponsorCode" value={form.refSponsorCode} onChange={handleChange} placeholder="Reference Sponsor Code" className={inputClass}/>
         </div>
 
-        {/* Sponsor Name */}
+        {/* Reference Sponsor Name */}
         <div className="relative">
-          <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            name="sponsorName"
-            placeholder="Sponsor Name"
-            value={form.sponsorName}
-            onChange={handleChange}
-            required
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          />
+          <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input type="text" name="refSponsorName" value={form.refSponsorName} onChange={handleChange} placeholder="Reference Sponsor Name" className={inputClass}/>
         </div>
 
         {/* Full Name */}
         <div className="relative">
-          <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            name="fullName"
-            placeholder="Full Name"
-            value={form.fullName}
-            onChange={handleChange}
-            required
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          />
+          <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input type="text" name="fullName" value={form.fullName} onChange={handleChange} placeholder="Full Name" className={inputClass} required/>
         </div>
 
-        {/* Gender */}
-        <div className="relative">
-          <select
-            name="gender"
-            value={form.gender}
-            onChange={handleChange}
-            required
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          >
+        {/* Gender & DOB */}
+        <div className="flex gap-4">
+          <select name="gender" value={form.gender} onChange={handleChange} className={`${inputClass} w-1/2`} required>
             <option value="">Select Gender</option>
             <option>Male</option>
             <option>Female</option>
             <option>Other</option>
           </select>
-          <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+
+          <div className="relative w-1/2">
+            <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input type="date" name="dob" value={form.dob} onChange={handleChange} className={inputClass} required/>
+          </div>
         </div>
 
-        {/* DOB */}
+        {/* ID Number */}
         <div className="relative">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="date"
-            name="dob"
-            value={form.dob}
-            onChange={handleChange}
-            required
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          />
+          <FaIdCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+          <input type="text" name="idNo" value={form.idNo} onChange={handleChange} placeholder="ID/Passport No" className={inputClass} required/>
         </div>
 
-        {/* Nationality */}
-        <div className="relative">
-          <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            name="nationality"
-            placeholder="Nationality"
-            value={form.nationality}
-            onChange={handleChange}
-            required
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Mobile */}
-        <div className="relative">
-          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            name="mobile"
-            placeholder="Mobile No"
-            value={form.mobile}
-            onChange={handleChange}
-            required
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Email */}
-        <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={handleChange}
-            required
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Language */}
-        <div className="relative">
-          <select
-            name="preferredLanguage"
-            value={form.preferredLanguage}
-            onChange={handleChange}
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="English">English</option>
-            <option value="Bangla">Bangla</option>
-            <option value="Hindi">Hindi</option>
+        {/* Nationality & Preferred Language */}
+        <div className="flex gap-4">
+          <div className="relative w-1/2">
+            <FaGlobe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+            <select name="nationality" value={form.nationality} onChange={handleChange} className={inputClass}>
+              <option value="">Select Nationality</option>
+              <option>Bangladeshi</option>
+              <option>Indian</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <select name="preferredLanguage" value={form.preferredLanguage} onChange={handleChange} className={`${inputClass} w-1/2`}>
+            <option value="">Preferred Language</option>
+            <option>English</option>
+            <option>Bangla</option>
+            <option>Hindi</option>
           </select>
-          <Languages className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        </div>
+
+        {/* Contact Info */}
+        <div className="flex gap-4">
+          <div className="relative w-1/2">
+            <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+            <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="Email" className={inputClass} required/>
+          </div>
+          <div className="relative w-1/2">
+            <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+            <input type="text" name="mobile" value={form.mobile} onChange={handleChange} placeholder="Mobile No" className={inputClass} required/>
+          </div>
         </div>
 
         {/* Address */}
         <div className="relative">
-          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            name="address"
-            placeholder="Address"
-            value={form.address}
-            onChange={handleChange}
-            required
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          />
+          <FaMapMarkerAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+          <input type="text" name="address" value={form.address} onChange={handleChange} placeholder="Address" className={inputClass}/>
         </div>
 
-        {/* State */}
-        <div className="relative">
-          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            name="state"
-            placeholder="State/Province"
-            value={form.state}
-            onChange={handleChange}
-            required
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          />
+        {/* State & City */}
+        <div className="flex gap-4">
+          <input type="text" name="state" value={form.state} onChange={handleChange} placeholder="State/Province" className={`${inputClass} w-1/2`}/>
+          <input type="text" name="city" value={form.city} onChange={handleChange} placeholder="City/Town" className={`${inputClass} w-1/2`}/>
         </div>
 
-        {/* City */}
-        <div className="relative">
-          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            name="city"
-            placeholder="City/Town"
-            value={form.city}
-            onChange={handleChange}
-            required
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          />
+        {/* Post Code & Image */}
+        <div className="flex gap-4">
+          <input type="text" name="postCode" value={form.postCode} onChange={handleChange} placeholder="Post Code" className={`${inputClass} w-1/2`}/>
+          <input type="file" name="image" accept="image/*" onChange={handleChange} className={`${inputClass} w-1/2`}/>
         </div>
 
         {/* Password */}
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            required
-            className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* File Upload */}
-        <div className="col-span-2 relative border-dashed border-2 rounded-lg p-4 flex flex-col items-center cursor-pointer hover:border-blue-500">
-          <ImageIcon className="text-gray-400 mb-2" size={28} />
-          <input
-            type="file"
-            name="image"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="absolute inset-0 opacity-0 cursor-pointer"
-          />
-          <p className="text-gray-500">Upload Profile Image</p>
-          {image && (
-            <p className="text-sm mt-1 text-green-600">{image.name}</p>
-          )}
+          <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+          <input type="password" name="password" value={form.password} onChange={handleChange} placeholder="Password" className={inputClass} required/>
         </div>
 
         {/* Submit */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="col-span-2 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="animate-spin" size={18} /> Registering...
-            </>
-          ) : (
-            "Register"
-          )}
+        <button className="w-full py-3 rounded-lg text-white font-medium bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-indigo-700 hover:to-blue-600 transition">
+          Register
         </button>
       </form>
     </div>

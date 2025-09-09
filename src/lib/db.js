@@ -1,13 +1,21 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGO_URL;
+const MONGODB_URI = process.env.MONGODB_URI?.trim();
+if (!MONGODB_URI) throw new Error("Please add MONGODB_URI to .env.local");
 
-if (!MONGODB_URI) throw new Error("MONGO_URL not defined in .env");
+let cached = global.mongoose;
+if (!cached) cached = global.mongoose = { conn: null, promise: null };
 
-if (!global._mongooseConnection) {
-  global._mongooseConnection = mongoose.connect(MONGODB_URI);
+async function dbConnect() {
+  if (cached.conn) return cached.conn;
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(MONGODB_URI).then((mongoose) => mongoose);
+  }
+  cached.conn = await cached.promise;
+  return cached.conn;
 }
 
-export default global._mongooseConnection;
+export default dbConnect;

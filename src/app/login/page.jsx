@@ -1,15 +1,28 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import Cookie from "js-cookie";
 
-export default function LoginPage() {
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [message, setMessage] = useState("");
+export default function LoginForm() {
   const router = useRouter();
+  const [form, setForm] = useState({ sponsorCode: "", password: "" });
+  const [message, setMessage] = useState("");
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  useEffect(() => {
+    // Check if user already logged in
+    const token = Cookie.get("token");
+    const role = Cookie.get("role");
+    if (token && role) {
+      role === "admin" ? router.push("/dashboard/admin") : router.push("/dashboard/user");
+    }
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,30 +30,57 @@ export default function LoginPage() {
 
     try {
       const res = await axios.post("/api/auth/login", form);
-      const data = res.data;
+      const { user } = res.data;
 
-      if (data.error) return setMessage("❌ " + data.error);
+      // Save role to cookie (not HttpOnly)
+      Cookie.set("role", user.role, { expires: 7 });
 
-      Cookie.set("token", data.token, { expires: 7 });
-      Cookie.set("role", data.role, { expires: 7 });
+      // Redirect based on role
+      if (user.role === "admin") router.push("/dashboard/admin");
+      else router.push("/dashboard/user");
 
-      setMessage("✅ " + data.message);
-
-      // Redirect
-      router.push(data.role === "admin" ? "/admin/dashboard" : "/user/dashboard");
     } catch (err) {
-      setMessage("❌ " + (err.response?.data?.error || "Login failed"));
+      setMessage(err.response?.data?.error || "Server error");
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white shadow rounded-lg">
-      <h1 className="text-2xl font-bold mb-4 text-center">Login</h1>
-      {message && <p className={`text-center mb-4 ${message.includes("✅") ? "text-green-600" : "text-red-600"}`}>{message}</p>}
+    <div className="max-w-md mx-auto mt-12 bg-white shadow-lg p-6 rounded-2xl">
+      <h2 className="text-2xl font-bold mb-4 text-center text-blue-700">Login</h2>
+
+      {message && <p className="mb-4 text-center text-sm text-red-500">{message}</p>}
+
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input type="email" name="email" placeholder="Email" onChange={handleChange} className="w-full border p-2 rounded" required />
-        <input type="password" name="password" placeholder="Password" onChange={handleChange} className="w-full border p-2 rounded" required />
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Login</button>
+        <div>
+          <label className="block text-sm font-medium">Sponsor Code</label>
+          <input
+            type="text"
+            name="sponsorCode"
+            value={form.sponsorCode}
+            onChange={handleChange}
+            required
+            className="w-full border rounded-md p-2"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium">Password</label>
+          <input
+            type="password"
+            name="password"
+            value={form.password}
+            onChange={handleChange}
+            required
+            className="w-full border rounded-md p-2"
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
+        >
+          Login
+        </button>
       </form>
     </div>
   );
