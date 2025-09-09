@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import db from "@/lib/db";
-import User from "@/models/User";
+import db from "../../../lib/db";
+import User from "../../../models/User";
 import fs from "fs";
 import path from "path";
 

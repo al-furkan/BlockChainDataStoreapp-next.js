@@ -1,6 +1,6 @@
 //src/app/api/admin/approve/route.js
-import db from "@/lib/db";
-import User from "@/models/User";
+import db from "../../../../lib/db";
+import User from "../../../../models/User";
 import { NextResponse } from "next/server";
 
 // কমিশন স্ট্রাকচার
